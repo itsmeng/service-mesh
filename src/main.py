@@ -5,7 +5,9 @@ import os
 from functions_facts import FUNCTIONS_DICT
 from feature_flag import FEATURE_FLAGS
 import logging
-from GCP_Handler.invoke_function import call_cloud_function
+from GCP_handler.invoke_function import call_cloud_function
+from utility import convert_to_string
+from email_lib.send_email import send_email
 
 logging.basicConfig(level=logging.INFO)
 
@@ -25,11 +27,15 @@ def mesh_gateway(function_name):
     # Forward headers and body
     headers = {key: value for (key, value) in request.headers if key != 'Host'}
     data = request.get_data()
+    data = convert_to_string(data)
     logging.info(f"headers = {data}")
 
     try:
+        logging.info(f"Calling cloud functions {cloud_function_url}")
         response = call_cloud_function(cloud_function_url, data)
-        #response = requests.post(cloud_function_url, headers=headers, data=data)
+        logging.info(f"response = {response}")
+        email_data = { "receiver": "test@test.com", "subject": "Test Subject", "body": response.content }
+        send_email(email_data)
         return (response.content, response.status_code, response.headers.items())
     except requests.RequestException as e:
         return jsonify({'error': str(e)}), 500
